@@ -1,5 +1,6 @@
 let limit = ref 1000
 let print_syntax = ref false
+let print_kNormal = ref false
 
 let rec iter n e = (* 最適化処理を繰り返す (caml2html: main_iter) *)
   Format.eprintf "iteration %d@." n;
@@ -19,10 +20,23 @@ let parse l =
   else 
     res
 
+let kNormalize l = 
+  let res = (KNormal.f l) in
+  if !print_kNormal
+  then 
+    (let oc = open_out "kNormal.t" in
+     KNormal.print_kNorm oc res 0;
+     close_out oc;
+     res)
+  else
+    res
+
 let lexbuf outchan l = (* バッファをコンパイルしてチャンネルに出力する(caml2html: main_lexbuf) *)
   Id.counter := 0;
   Typing.extenv := M.empty;
   let parsed = parse l in
+  let typed = Typing.f parsed in
+  let kNormalized = kNormalize typed in
   Emit.f outchan
     (RegAlloc.f
        (Simm.f
@@ -30,9 +44,7 @@ let lexbuf outchan l = (* バッファをコンパイルしてチャンネルに
 	     (Closure.f
 		(iter !limit
 		   (Alpha.f
-		      (KNormal.f
-			 (Typing.f
-			    parsed))))))))
+		      kNormalized))))))
 
 
 let string s = lexbuf stdout (Lexing.from_string s) (* 文字列をコンパイルして標準出力に出力する (caml2html: main_string) *)
@@ -51,7 +63,8 @@ let () = (* ここからコンパイルが開始される (caml2html: main_entry
   Arg.parse
     [("-inline", Arg.Int(fun i -> Inline.threshold := i), "maximum size of functions inlined");
      ("-iter", Arg.Int(fun i -> limit := i), "maximum number of optimizations iterated"); 
-    ("-psyntax", Arg.Unit(fun () -> print_syntax := true), "print the parse result to Syntax.t")]
+    ("-psyntax", Arg.Unit(fun () -> print_syntax := true), "print the parse result to Syntax.t");
+    ("-pknorm", Arg.Unit(fun () -> print_kNormal := true), "print the kNormalize result to kNormal.t")]
     (fun s -> files := !files @ [s])
     ("Mitou Min-Caml Compiler (C) Eijiro Sumii\n" ^
      Printf.sprintf "usage: %s [-inline m] [-iter n] ...filenames without \".ml\"..." Sys.argv.(0));

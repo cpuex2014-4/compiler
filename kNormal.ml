@@ -253,6 +253,4 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) 
 
 let f e = 
   let res = fst (g M.empty e) in
-  let outchan = open_out "kNormal.t" in
-  print_kNorm outchan res 0;
   res
