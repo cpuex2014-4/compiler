@@ -151,9 +151,6 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
   with Unify(t1, t2) -> raise (Error(deref_term e, deref_typ t1, deref_typ t2))
 
 let f e =
-  let outchan = open_out "Syntax.t" in
-  Syntax.print_syntax outchan e 0;
-  close_out outchan;
   extenv := M.empty;
 (*
   (match deref_typ (g M.empty e) with
