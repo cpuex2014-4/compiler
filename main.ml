@@ -2,6 +2,7 @@ let limit = ref 1000
 let print_syntax = ref false
 let print_kNormal = ref false
 let print_alpha = ref false
+let print_closure = ref false
 
 let rec iter n e = (* 最適化処理を繰り返す (caml2html: main_iter) *)
   Format.eprintf "iteration %d@." n;
@@ -43,6 +44,16 @@ let alpha l =
   else
     res
 
+let closure l =
+  let res = Closure.f l in
+  if !print_closure
+  then 
+    (let oc = open_out "Closure.t" in
+     Closure.print_prog oc res 0;
+     res)
+  else 
+    res
+
 let lexbuf outchan l = (* バッファをコンパイルしてチャンネルに出力する(caml2html: main_lexbuf) *)
   Id.counter := 0;
   Typing.extenv := M.empty;
@@ -50,13 +61,12 @@ let lexbuf outchan l = (* バッファをコンパイルしてチャンネルに
   let typed = Typing.f parsed in
   let kNormalized = kNormalize typed in
   let alphaed = alpha kNormalized in
+  let with_closure = closure (iter !limit alphaed) in
   Emit.f outchan
     (RegAlloc.f
        (Simm.f
 	  (Virtual.f
-	     (Closure.f
-		(iter !limit
-		   alphaed)))))
+	   with_closure)))
 
 
 let string s = lexbuf stdout (Lexing.from_string s) (* 文字列をコンパイルして標準出力に出力する (caml2html: main_string) *)
@@ -77,7 +87,8 @@ let () = (* ここからコンパイルが開始される (caml2html: main_entry
      ("-iter", Arg.Int(fun i -> limit := i), "maximum number of optimizations iterated"); 
     ("-psyntax", Arg.Unit(fun () -> print_syntax := true), "print the parse result to Syntax.t");
     ("-pknorm", Arg.Unit(fun () -> print_kNormal := true), "print the kNormalize result to kNormal.t");
-    ("-palpha", Arg.Unit(fun () -> print_alpha := true), "print the alpha convert result to Alpha.t")]
+    ("-palpha", Arg.Unit(fun () -> print_alpha := true), "print the alpha convert result to Alpha.t");
+    ("-pclosure", Arg.Unit(fun () -> print_closure := true), "print the closure result to Closure.t")]
     (fun s -> files := !files @ [s])
     ("Mitou Min-Caml Compiler (C) Eijiro Sumii\n" ^
      Printf.sprintf "usage: %s [-inline m] [-iter n] ...filenames without \".ml\"..." Sys.argv.(0));

@@ -29,5 +29,6 @@ type fundef = { name : Id.l * Type.t;
 		body : t }
 type prog = Prog of fundef list * t
 
+val print_prog : out_channel -> prog -> int -> unit
 val fv : t -> S.t
 val f : KNormal.t -> prog

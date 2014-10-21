@@ -20,6 +20,20 @@ let rec print_id_list outchan idl indent =
       (print_id outchan id indent;
        print_id_list outchan res indent)
 
+let print_label outchan label indent =
+  let rec make_indent outchan indent =
+    if indent > 0 
+    then 
+      (output_char outchan ' ';
+       output_char outchan ' ';
+       make_indent outchan (indent-1))
+    else ()
+  in 
+  match label with
+    | L string ->
+      (make_indent outchan indent;
+       output_string outchan (string^"\n"))
+
 let rec pp_list = function
   | [] -> ""
   | [x] -> x

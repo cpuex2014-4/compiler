@@ -29,6 +29,109 @@ type fundef = { name : Id.l * Type.t;
 		body : t }
 type prog = Prog of fundef list * t
 
+let rec make_indent outchan i =
+  if i > 0 
+  then 
+    (output_char outchan ' ';
+     output_char outchan ' ';
+     make_indent outchan (i-1))
+
+let rec print_closure outchan exp indent =
+  let out exp = 
+    make_indent outchan indent;
+    output_string outchan (exp^"\n")
+  in
+  match exp with
+    | Unit -> ()
+    | Int int -> out ("Int "^string_of_int int)
+    | Float float -> out ("Float "^string_of_float float)
+    | Neg id -> out ("Neg "^id)
+    | Add (id0, id1) -> out ("Add "^id0^" "^id1)
+    | Sub (id0, id1) -> out ("Sub "^id0^" "^id1)
+    | FNeg id -> out ("FNeg "^id)
+    | FAdd (id0, id1) -> out ("FAdd "^id0^" "^id1)
+    | FSub (id0, id1) -> out ("FSub "^id0^" "^id1)
+    | FMul (id0, id1) -> out ("FMul "^id0^" "^id1)
+    | FDiv (id0, id1) -> out ("FDiv "^id0^" "^id1)
+    | IfEq (id0, id1, t0, t1) ->
+      (out ("IfEq "^id0^" "^id1);
+       print_closure outchan t0 (indent + 1);
+       print_closure outchan t1 (indent + 1))
+    | IfLE (id0, id1, t0, t1) ->
+      (out ("IfLE "^id0^" "^id1);
+       print_closure outchan t0 (indent + 1);
+       print_closure outchan t1 (indent + 1))
+    | Let ((id, _), t0, t1) ->
+      (out "Let";
+       Id.print_id outchan id (indent + 1);
+       print_closure outchan t0 (indent + 1);
+       print_closure outchan t1 (indent + 1))
+    | Var id -> out ("Var "^id)
+    | MakeCls ((id, _), cls, t) ->
+      (out "MakeCls";
+       Id.print_id outchan id (indent + 1);
+       print_closure_sub outchan cls (indent + 1);
+       print_closure outchan t (indent + 1))
+    | AppCls (id, idl) ->
+      (out "AppCls";
+       Id.print_id outchan id (indent + 1);
+       Id.print_id_list outchan idl (indent + 1))
+    | AppDir (label, idl) ->
+      (out "AppDir";
+       Id.print_label outchan label (indent + 1);
+       Id.print_id_list outchan idl (indent + 1))
+    | Tuple idl ->
+      (out "Tuple";
+       Id.print_id_list outchan idl (indent + 1))
+    | LetTuple (namel, id, t) ->
+      (out "LetTuple";
+       print_name_list outchan namel (indent + 1);
+       print_closure outchan t (indent + 1))
+    | Get (id0, id1) ->
+      (out "Get";
+       Id.print_id outchan id0 (indent + 1);
+       Id.print_id outchan id1 (indent + 1))
+    | Put (id0, id1, id2) ->
+      (out "Put";
+       Id.print_id outchan id0 (indent + 1);
+       Id.print_id outchan id1 (indent + 1);
+       Id.print_id outchan id2 (indent + 1))
+    | ExtArray label ->
+      (out "ExtArray";
+       Id.print_label outchan label (indent + 1))
+and print_name outchan name indent =
+  let (id, t) = name in
+  Id.print_id outchan id indent
+and print_name_list outchan namel indent =
+  match namel with
+    | [] -> ()
+    | name::res -> 
+      (print_name outchan name indent;
+       print_name_list outchan res indent)
+and print_closure_sub outchan cls indent =
+  Id.print_label outchan cls.entry indent;
+  Id.print_id_list outchan cls.actual_fv indent
+
+let print_fundef outchan fundef indent =
+  let (label,_) = fundef.name in
+  Id.print_label outchan label indent;
+  print_name_list outchan fundef.args indent;
+  print_name_list outchan fundef.formal_fv (indent + 1);
+  print_closure outchan fundef.body indent
+
+let rec print_fundef_list outchan fundefl indent =
+  match fundefl with
+    | [] -> ()
+    | fundef::res ->
+      (print_fundef outchan fundef indent;
+       print_fundef_list outchan res indent)
+
+let print_prog outchan fundef indent =
+  match fundef with
+    | Prog (fundefl, t) ->
+      (print_fundef_list outchan fundefl indent;
+       print_closure outchan t indent)
+  
 let rec fv = function
   | Unit | Int(_) | Float(_) | ExtArray(_) -> S.empty
   | Neg(x) | FNeg(x) -> S.singleton x
@@ -60,36 +163,29 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2
   | KNormal.IfLE(x, y, e1, e2) -> IfLE(x, y, g env known e1, g env known e2)
   | KNormal.Let((x, t), e1, e2) -> Let((x, t), g env known e1, g (M.add x t env) known e2)
   | KNormal.Var(x) -> Var(x)
-  | KNormal.LetRec({ KNormal.name = (x, t); KNormal.args = yts; KNormal.body = e1 }, e2) -> (* 関数定義の場合 (caml2html: closure_letrec) *)
-      (* 関数定義let rec x y1 ... yn = e1 in e2の場合は、
-	 xに自由変数がない(closureを介さずdirectに呼び出せる)
-	 と仮定し、knownに追加してe1をクロージャ変換してみる *)
+  | KNormal.LetRec({ KNormal.name = (x, t); KNormal.args = yts; KNormal.body = e1 }, e2) -> 
       let toplevel_backup = !toplevel in
       let env' = M.add x t env in
       let known' = S.add x known in
       let e1' = g (M.add_list yts env') known' e1 in
-      (* 本当に自由変数がなかったか、変換結果e1'を確認する *)
-      (* 注意: e1'にx自身が変数として出現する場合はclosureが必要!
-         (thanks to nuevo-namasute and azounoman; test/cls-bug2.ml参照) *)
       let zs = S.diff (fv e1') (S.of_list (List.map fst yts)) in
       let known', e1' =
 	if S.is_empty zs then known', e1' else
-	(* 駄目だったら状態(toplevelの値)を戻して、クロージャ変換をやり直す *)
 	(Format.eprintf "free variable(s) %s found in function %s@." (Id.pp_list (S.elements zs)) x;
 	 Format.eprintf "function %s cannot be directly applied in fact@." x;
 	 toplevel := toplevel_backup;
 	 let e1' = g (M.add_list yts env') known e1 in
 	 known, e1') in
-      let zs = S.elements (S.diff (fv e1') (S.add x (S.of_list (List.map fst yts)))) in (* 自由変数のリスト *)
-      let zts = List.map (fun z -> (z, M.find z env')) zs in (* ここで自由変数zの型を引くために引数envが必要 *)
-      toplevel := { name = (Id.L(x), t); args = yts; formal_fv = zts; body = e1' } :: !toplevel; (* トップレベル関数を追加 *)
+      let zs = S.elements (S.diff (fv e1') (S.add x (S.of_list (List.map fst yts)))) in 
+      let zts = List.map (fun z -> (z, M.find z env')) zs in 
+      toplevel := { name = (Id.L(x), t); args = yts; formal_fv = zts; body = e1' } :: !toplevel; 
       let e2' = g env' known' e2 in
-      if S.mem x (fv e2') then (* xが変数としてe2'に出現するか *)
-	MakeCls((x, t), { entry = Id.L(x); actual_fv = zs }, e2') (* 出現していたら削除しない *)
+      if S.mem x (fv e2') then 
+	MakeCls((x, t), { entry = Id.L(x); actual_fv = zs }, e2') 
       else
 	(Format.eprintf "eliminating closure(s) %s@." x;
-	 e2') (* 出現しなければMakeClsを削除 *)
-  | KNormal.App(x, ys) when S.mem x known -> (* 関数適用の場合 (caml2html: closure_app) *)
+	 e2') 
+  | KNormal.App(x, ys) when S.mem x known -> 
       Format.eprintf "directly applying %s@." x;
       AppDir(Id.L(x), ys)
   | KNormal.App(f, xs) -> AppCls(f, xs)
