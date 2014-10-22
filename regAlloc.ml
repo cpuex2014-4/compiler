@@ -132,7 +132,7 @@ and g'_and_restore dest cont regenv exp = (* 使用される変数をスタッ�
     ((* Format.eprintf "restoring %s@." x; *)
      g dest cont regenv (Let((x, t), Restore(x), Ans(exp))))
 and g' dest cont regenv = function (* 各命令のレジスタ割り当て (caml2html: regalloc_gprime) *)
-  | Nop | Set _ | SetL _ | Comment _ | Restore _ as exp -> (Ans(exp), regenv)
+  | Nop | Set _ | SetF _ | Comment _ | Restore _ as exp -> (Ans(exp), regenv)
   | Mov(x) -> (Ans(Mov(find x Type.Int regenv)), regenv)
   | Neg(x) -> (Ans(Neg(find x Type.Int regenv)), regenv)
   | Add(x, y') -> (Ans(Add(find x Type.Int regenv, find' y' regenv)), regenv)
@@ -190,7 +190,7 @@ and g'_call dest cont regenv exp constr ys zs = (* 関数呼び出しのレジ�
 
 let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレジスタ割り当て (caml2html: regalloc_h) *)
   let regenv = M.add x reg_cl M.empty in
-  let (i, arg_regs, regenv) =
+  let (i, arg_regs, regenv) = (* 引数の数が４を超える場合はスタックに退避しないといけないがしていない。よって、そのような関数があるとバグる。 *)
     List.fold_left
       (fun (i, arg_regs, regenv) y ->
         let r = regs.(i) in
@@ -208,7 +208,7 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数�
 	 farg_regs @ [fr],
 	 (assert (not (is_reg z));
 	  M.add z fr regenv)))
-      (0, [], regenv)
+      (2, [], regenv)
       zs in
   let a =
     match t with
