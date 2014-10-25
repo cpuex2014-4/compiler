@@ -62,44 +62,17 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   | NonTail(x), Sub(y, C(z)) -> Printf.fprintf oc "\taddiu\t%s, %s, %d\n" x y ((-1) * z)
   | NonTail(x), Ld(y, V(z), i) -> Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x i z
   | NonTail(x), Ld(y, C(j), i) -> Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (j * i) y
-  | NonTail(_), St(x, y, V(z), i) -> Printf.fprintf oc "\tmovl\t%s, (%s,%s,%d)\n" x y z i
+  | NonTail(_), St(x, y, V(z), i) -> ()
   | NonTail(_), St(x, y, C(j), i) -> Printf.fprintf oc "\tsw\t%d(%s), %s\n" (j * i) y x
   | NonTail(x), FMovD(y) ->
-      if x <> y then Printf.fprintf oc "\tmovsd\t%s, %s\n" y x
-  | NonTail(x), FNegD(y) ->
-      if x <> y then Printf.fprintf oc "\tmovsd\t%s, %s\n" y x;
-      Printf.fprintf oc "\txorpd\tmin_caml_fnegd, %s\n" x
-  | NonTail(x), FAddD(y, z) ->
-      if x = z then
-        Printf.fprintf oc "\taddsd\t%s, %s\n" y x
-      else
-        (if x <> y then Printf.fprintf oc "\tmovsd\t%s, %s\n" y x;
-	 Printf.fprintf oc "\taddsd\t%s, %s\n" z x)
-  | NonTail(x), FSubD(y, z) ->
-      if x = z then (* [XXX] ugly *)
-	let ss = stacksize () in
-	Printf.fprintf oc "\tmovsd\t%s, %d(%s)\n" z ss reg_sp;
-	if x <> y then Printf.fprintf oc "\tmovsd\t%s, %s\n" y x;
-	Printf.fprintf oc "\tsubsd\t%d(%s), %s\n" ss reg_sp x
-      else
-	(if x <> y then Printf.fprintf oc "\tmovsd\t%s, %s\n" y x;
-	 Printf.fprintf oc "\tsubsd\t%s, %s\n" z x)
-  | NonTail(x), FMulD(y, z) ->
-      if x = z then
-        Printf.fprintf oc "\tmulsd\t%s, %s\n" y x
-      else
-        (if x <> y then Printf.fprintf oc "\tmovsd\t%s, %s\n" y x;
-	 Printf.fprintf oc "\tmulsd\t%s, %s\n" z x)
-  | NonTail(x), FDivD(y, z) ->
-      if x = z then (* [XXX] ugly *)
-	let ss = stacksize () in
-	Printf.fprintf oc "\tmovsd\t%s, %d(%s)\n" z ss reg_sp;
-	if x <> y then Printf.fprintf oc "\tmovsd\t%s, %s\n" y x;
-	Printf.fprintf oc "\tdivsd\t%d(%s), %s\n" ss reg_sp x
-      else
-	(if x <> y then Printf.fprintf oc "\tmovsd\t%s, %s\n" y x;
-	 Printf.fprintf oc "\tdivsd\t%s, %s\n" z x)
-  | NonTail(x), LdDF(y, V(z), i) -> Printf.fprintf oc "\tmovsd\t(%s,%s,%d), %s\n" y z i x
+      if x <> y then Printf.fprintf oc "\tmov.s\t%s, %s\n" x y
+  | NonTail(x), FNegD(y) ->      
+      if x <> y then Printf.fprintf oc "\tneg.s\t%s, %s\n" x y
+  | NonTail(x), FAddD(y, z) -> Printf.fprintf oc "\tadd.s\t%s, %s, %s\n" x y z
+  | NonTail(x), FSubD(y, z) -> Printf.fprintf oc "\tsub.s\t%s, %s, %s\n" x y z
+  | NonTail(x), FMulD(y, z) -> Printf.fprintf oc "\tmul.s\t%s, %s, %s\n" x y z
+  | NonTail(x), FDivD(y, z) -> Printf.fprintf oc "\tdiv.s\t%s, %s, %s\n" x y z
+  | NonTail(x), LdDF(y, V(z), i) -> ()
   | NonTail(x), LdDF(y, C(j), i) -> Printf.fprintf oc "\tmovsd\t%d(%s), %s\n" (j * i) y x
   | NonTail(_), StDF(x, y, V(z), i) -> Printf.fprintf oc "\tmovsd\t%s, (%s,%s,%d)\n" x y z i
   | NonTail(_), StDF(x, y, C(j), i) -> Printf.fprintf oc "\tmovsd\t%s, %d(%s)\n" x (j * i) y
