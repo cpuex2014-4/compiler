@@ -140,7 +140,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   (* 退避の仮想命令の実装 (caml2html: emit_save) *)
   | NonTail(_), Save(x, y) when List.mem x allregs && not (S.mem y !stackset) ->
       save y;
-      Printf.fprintf oc "\tsw\t%d(%s), %s\n" (offset y) x reg_sp
+      Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x (offset y) reg_sp
   | NonTail(_), Save(x, y) when List.mem x allfregs && not (S.mem y !stackset) ->
     raise Not_supported_yet
       (* savef y; *)
@@ -158,7 +158,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       g' oc (NonTail(Id.gentmp Type.Unit), exp);
       Printf.fprintf oc "\tjr\t$ra\n";
   | Tail, (Set _ | SetL _ | Mov _ | Neg _ | Add _ | Sub _ | Ld _ as exp) ->
-      g' oc (NonTail(regs.(0)), exp);
+      g' oc (NonTail(reg_ret), exp);
       Printf.fprintf oc "\tjr\t$ra\n";
   | Tail, (FMovD _ | FNegD _ | FAddD _ | FSubD _ | FMulD _ | FDivD _ | LdDF _  as exp) ->
      raise Not_supported_yet
@@ -205,10 +205,10 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   (* 関数呼び出しの仮想命令の実装 (caml2html: emit_call) *)
   | Tail, CallCls(x, ys, zs) -> (* 末尾呼び出し (caml2html: emit_tailcall) *)
       g'_args oc [(x, reg_cl)] ys zs; (* 引数のセット *)
-      Printf.fprintf oc "\tjal\t%s\n" x;
+      Printf.fprintf oc "\tj\t%s\n" x;
   | Tail, CallDir(Id.L(x), ys, zs) -> (* 末尾呼び出し *)
       g'_args oc [] ys zs;
-      Printf.fprintf oc "\tjal\t%s\n" x;
+      Printf.fprintf oc "\tj\t%s\n" x;
   | NonTail(a), CallCls(x, ys, zs) ->
     raise Not_supported_yet
       (* g'_args oc [(x, reg_cl)] ys zs; *)
@@ -221,16 +221,19 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       (* else if List.mem a allfregs && a <> fregs.(0) then *)
       (*   Printf.fprintf oc "\tmovsd\t%s, %s\n" fregs.(0) a *)
   | NonTail(a), CallDir(Id.L(x), ys, zs) ->
-    raise Not_supported_yet
-      (* g'_args oc [] ys zs; *)
-      (* let ss = stacksize () in *)
-      (* if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp ss; *)
-      (* Printf.fprintf oc "\tj\t%s\n" x; *)
-      (* if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp (-1*ss); *)
-      (* if List.mem a allregs && a <> regs.(0) then *)
-      (*   Printf.fprintf oc "\taddu\t%s, %s\n" a regs.(0) *)
-      (* else if List.mem a allfregs && a <> fregs.(0) then *)
-      (*   Printf.fprintf oc "\tmovsd\t%s, %s\n" fregs.(0) a *)
+      g'_args oc [] ys zs;
+      let ss = stacksize () in
+      if ss > 0 then
+	(Printf.fprintf oc "\tsw\t$ra, %d($sp)\n" ss;
+	Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (ss+4));
+      Printf.fprintf oc "\tjal\t%s\n" x;
+      if ss > 0 then
+	(Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (-1*ss-4);
+	 Printf.fprintf oc "\tlw\t$ra, %d($sp)\n" ss);
+      if List.mem a allregs && a <> reg_ret then
+        Printf.fprintf oc "\taddu\t%s, $v0, $zero\n" a 
+      else if List.mem a allfregs && a <> fregs.(0) then
+        Printf.fprintf oc "\tmov.s\t%s, %s\n" a fregs.(0)
   | _, asm -> Printf.fprintf oc "matching error:%s\n" (to_string asm)
 and g'_tail_ifeq oc x y e1 e2 =
   let label = Id.genid ("branch") in
@@ -280,7 +283,7 @@ and g'_args oc x_reg_cl ys zs =
       (0, [])
       zs in
   List.iter
-    (fun (z, fr) -> Printf.fprintf oc "\tmovsd\t%s, %s\n" z fr)
+    (fun (z, fr) -> Printf.fprintf oc "\tmov.s\t%s, %s\n" z fr)
     (shuffle sw zfrs)
 
 let h oc { name = Id.L(x); args = _; fargs = _; body = e; ret = _ } =

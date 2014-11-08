@@ -79,6 +79,7 @@ let regs = (* Array.init 16 (fun i -> Printf.sprintf "%%r%d" i) *)
 let fregs = Array.init 32 (fun i -> Printf.sprintf "$f%d" i)
 let allregs = Array.to_list regs
 let allfregs = Array.to_list fregs
+let reg_ret = regs.(0)
 let reg_cl = regs.(Array.length regs - 5) (* closure address = $k1 *)
 (*
 let reg_sw = regs.(Array.length regs - 1) (* temporary for swap *)
