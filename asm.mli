@@ -5,7 +5,7 @@ type t =
 and exp =
   | Nop
   | Set of int
-  | SetF of Id.l
+  | SetL of Id.l
   | Mov of Id.t
   | Neg of Id.t
   | Add of Id.t * id_or_imm

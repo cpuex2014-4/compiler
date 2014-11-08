@@ -55,7 +55,8 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   (* 末尾でなかったら計算結果をdestにセット (caml2html: emit_nontail) *)
   | NonTail(_), Nop -> ()
   | NonTail(x), Set(i) -> Printf.fprintf oc "\taddiu\t%s, $zero, %d\n" x i
-(*  | NonTail(x), SetL(Id.L(y)) -> Printf.fprintf oc "\tmovl\t$%s, %s\n" y x *)
+  | NonTail(x), SetL(Id.L(y)) -> 
+    Printf.fprintf oc "\taddiu\t%s, $zero, %s\n" x y
   | NonTail(x), Mov(y) ->
     if x <> y then Printf.fprintf oc "\taddu\t%s, %s, $zero\n" x y
   | NonTail(x), Neg(y) -> Printf.fprintf oc "\tsubu%s, $zero, %s\n" x y
@@ -156,7 +157,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   | Tail, (Nop | St _ | StDF _ | Comment _ | Save _ as exp) ->
       g' oc (NonTail(Id.gentmp Type.Unit), exp);
       Printf.fprintf oc "\tjr\t$ra\n";
-  | Tail, (Set _ | SetF _ | Mov _ | Neg _ | Add _ | Sub _ | Ld _ as exp) ->
+  | Tail, (Set _ | SetL _ | Mov _ | Neg _ | Add _ | Sub _ | Ld _ as exp) ->
       g' oc (NonTail(regs.(0)), exp);
       Printf.fprintf oc "\tjr\t$ra\n";
   | Tail, (FMovD _ | FNegD _ | FAddD _ | FSubD _ | FMulD _ | FDivD _ | LdDF _  as exp) ->
@@ -209,25 +210,27 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       g'_args oc [] ys zs;
       Printf.fprintf oc "\tjal\t%s\n" x;
   | NonTail(a), CallCls(x, ys, zs) ->
-      g'_args oc [(x, reg_cl)] ys zs;
-      let ss = stacksize () in
-      if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp ss;
-      Printf.fprintf oc "\tcall\t*(%s)\n" reg_cl;
-      if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp (-1*ss);
-      if List.mem a allregs && a <> regs.(0) then
-        Printf.fprintf oc "\taddu\t%s, %s\n" a regs.(0)
-      else if List.mem a allfregs && a <> fregs.(0) then
-        Printf.fprintf oc "\tmovsd\t%s, %s\n" fregs.(0) a
+    raise Not_supported_yet
+      (* g'_args oc [(x, reg_cl)] ys zs; *)
+      (* let ss = stacksize () in *)
+      (* if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp ss; *)
+      (* Printf.fprintf oc "\tcall\t*(%s)\n" reg_cl; *)
+      (* if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp (-1*ss); *)
+      (* if List.mem a allregs && a <> regs.(0) then *)
+      (*   Printf.fprintf oc "\taddu\t%s, %s\n" a regs.(0) *)
+      (* else if List.mem a allfregs && a <> fregs.(0) then *)
+      (*   Printf.fprintf oc "\tmovsd\t%s, %s\n" fregs.(0) a *)
   | NonTail(a), CallDir(Id.L(x), ys, zs) ->
-      g'_args oc [] ys zs;
-      let ss = stacksize () in
-      if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp ss;
-      Printf.fprintf oc "\tj\t%s\n" x;
-      if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp (-1*ss);
-      if List.mem a allregs && a <> regs.(0) then
-        Printf.fprintf oc "\taddu\t%s, %s\n" a regs.(0)
-      else if List.mem a allfregs && a <> fregs.(0) then
-        Printf.fprintf oc "\tmovsd\t%s, %s\n" fregs.(0) a
+    raise Not_supported_yet
+      (* g'_args oc [] ys zs; *)
+      (* let ss = stacksize () in *)
+      (* if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp ss; *)
+      (* Printf.fprintf oc "\tj\t%s\n" x; *)
+      (* if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp (-1*ss); *)
+      (* if List.mem a allregs && a <> regs.(0) then *)
+      (*   Printf.fprintf oc "\taddu\t%s, %s\n" a regs.(0) *)
+      (* else if List.mem a allfregs && a <> fregs.(0) then *)
+      (*   Printf.fprintf oc "\tmovsd\t%s, %s\n" fregs.(0) a *)
   | _, asm -> Printf.fprintf oc "matching error:%s\n" (to_string asm)
 and g'_tail_ifeq oc x y e1 e2 =
   let label = Id.genid ("branch") in

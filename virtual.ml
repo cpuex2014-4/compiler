@@ -45,7 +45,7 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: vir
 	  data := (l, d) :: !data;
 	  l in
       let x = Id.genid "l" in
-      Let((x, Type.Int), SetF(l), Ans(LdDF(x, C(0), 1)))
+      Let((x, Type.Int), SetL(l), Ans(LdDF(x, C(0), 1)))
   | Closure.Neg(x) -> Ans(Neg(x))
   | Closure.Add(x, y) -> Ans(Add(x, V(y)))
   | Closure.Sub(x, y) -> Ans(Sub(x, V(y)))
@@ -85,7 +85,7 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: vir
       Let((x, t), Mov(reg_hp),
 	  Let((reg_hp, Type.Int), Add(reg_hp, C(align offset)),
 	      let z = Id.genid "l" in
-	      Let((z, Type.Int), SetF(l),
+	      Let((z, Type.Int), SetL(l),
 		  seq(St(z, x, C(0), 1),
 		      store_fv))))
   | Closure.AppCls(x, ys) ->
@@ -130,7 +130,7 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: vir
       | Type.Array(Type.Float) -> Ans(StDF(z, x, V(y), 8))
       | Type.Array(_) -> Ans(St(z, x, V(y), 4))
       | _ -> assert false)
-  | Closure.ExtArray(Id.L(x)) -> Ans(SetF(Id.L("min_caml_" ^ x)))
+  | Closure.ExtArray(Id.L(x)) -> Ans(SetL(Id.L("min_caml_" ^ x)))
 
 (* 関数の仮想マシンコード生成 (caml2html: virtual_h) *)
 let h { Closure.name = (Id.L(x), t); Closure.args = yts; Closure.formal_fv = zts; Closure.body = e } =
