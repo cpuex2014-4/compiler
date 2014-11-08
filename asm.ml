@@ -38,6 +38,36 @@ type fundef = { name : Id.l; args : Id.t list; fargs : Id.t list; body : t; ret 
 (* プログラム全体 = 浮動小数点数テーブル + トップレベル関数 + メインの式 (caml2html: sparcasm_prog) *)
 type prog = Prog of (Id.l * float) list * fundef list * t
 
+let rec to_string exp =
+  match exp with
+    | Nop -> "Nop"
+    | Set(n) -> Printf.sprintf "Set(%d)" n
+    | SetF(l) -> Printf.sprintf "SetF"
+    | Mov(id) -> Printf.sprintf "Mov(%s)" id
+    | Neg(id) -> Printf.sprintf "Neg(%s)" id
+    | Add(_, _) -> "Add"
+    | Sub(_, _) -> "Sub"
+    | Ld(_,_,_) -> "Ld"
+    | St(_,_,_,_) -> "St"
+    | FMovD(_) -> "FMovD"
+    | FNegD(_) -> "FNegD"
+    | FAddD(_,_) -> "FAddD"
+    | FSubD(_,_) -> "FSubD"
+    | FMulD(_,_) -> "FMulD"
+    | FDivD(_,_) -> "FDivD"
+    | LdDF(_,_,_) -> "LdDF"
+    | StDF(_,_,_,_) -> "StDF"
+    | Comment(_) -> "Comment" 
+    | IfEq(_,_,_,_) -> "IfEq"
+    | IfLE(_,_,_,_) -> "IfLE"
+    | IfGE(_,_,_,_) -> "IfGE"
+    | IfFEq(_,_,_,_) -> "IfFEq"
+    | IfFLE(_,_,_,_) -> "IfFLE"
+    | CallCls(_,_,_) -> "CallCls"
+    | CallDir(_,_,_) -> "CallDir"
+    | Save(_,_) -> "Save"
+    | Restore(_) -> "Restore"
+
 let fletd(x, e1, e2) = Let((x, Type.Float), e1, e2)
 let seq(e1, e2) = Let((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 

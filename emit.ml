@@ -60,6 +60,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
     if x <> y then Printf.fprintf oc "\taddu\t%s, %s, $zero\n" x y
   | NonTail(x), Neg(y) -> Printf.fprintf oc "\tsubu%s, $zero, %s\n" x y
   | NonTail(x), Add(y, V(z)) -> Printf.fprintf oc "\taddu\t%s, %s, %s\n" x y z
+  | NonTail(x), Add(y, C(z)) -> Printf.fprintf oc "\taddiu\t%s, %s, %d\n" x y z
   | NonTail(x), Sub(y, V(z)) -> Printf.fprintf oc "\tsubu\t%s, %s, %s\n" x y z
   | NonTail(x), Sub(y, C(z)) -> Printf.fprintf oc "\taddiu\t%s, %s, %d\n" x y ((-1) * z)
   | NonTail(x), Ld(y, V(z), i) ->
@@ -206,7 +207,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       Printf.fprintf oc "\tjal\t%s\n" x;
   | Tail, CallDir(Id.L(x), ys, zs) -> (* 末尾呼び出し *)
       g'_args oc [] ys zs;
-      Printf.fprintf oc "\tjmp\t%s\n" x;
+      Printf.fprintf oc "\tjal\t%s\n" x;
   | NonTail(a), CallCls(x, ys, zs) ->
       g'_args oc [(x, reg_cl)] ys zs;
       let ss = stacksize () in
@@ -227,6 +228,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
         Printf.fprintf oc "\taddu\t%s, %s\n" a regs.(0)
       else if List.mem a allfregs && a <> fregs.(0) then
         Printf.fprintf oc "\tmovsd\t%s, %s\n" fregs.(0) a
+  | _, asm -> Printf.fprintf oc "matching error:%s\n" (to_string asm)
 and g'_tail_ifeq oc x y e1 e2 =
   let label = Id.genid ("branch") in
   Printf.fprintf oc "\tbne\t%s, %s, %s\n" x y label;
