@@ -316,7 +316,6 @@ let f oc (Prog(data, fundefs, e)) =
       Printf.fprintf oc "\t.long\t0x%lx\n" (gethi d);
       Printf.fprintf oc "\t.long\t0x%lx\n" (getlo d))
     data;
-  Printf.fprintf oc "\tj\tmain\n";
   List.iter (fun fundef -> h oc fundef) fundefs;
   stackset := S.empty;
   stackmap := [];
