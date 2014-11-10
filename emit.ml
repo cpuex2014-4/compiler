@@ -172,11 +172,19 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       Printf.fprintf oc "\tjr\t$ra\n";
   | Tail, IfEq(x, y', e1, e2) ->
       g'_tail_ifeq oc x (pp_id_or_imm y') e1 e2
-  | Tail, IfLE(x, y', e1, e2) ->
-      Printf.fprintf oc "\tslt\t$at, %s, %s\n" (pp_id_or_imm y') x;
+  | Tail, IfLE(x, V(y), e1, e2) ->
+      Printf.fprintf oc "\tslt\t$at, %s, %s\n" y x;
       g'_tail_ifeq oc "$at" "$zero" e1 e2
-  | Tail, IfGE(x, y', e1, e2) ->
-      Printf.fprintf oc "\tslt\t$at, %s, %s\n" x (pp_id_or_imm y');
+  | Tail, IfLE(x, C(y), e1, e2) ->
+      Printf.fprintf oc "\taddiu\t$at, $zero, %d\n" y;
+      Printf.fprintf oc "\tslt\t$at, $at, %s\n" x;
+      g'_tail_ifeq oc "$at" "$zero" e1 e2
+  | Tail, IfGE(x, V(y), e1, e2) ->
+      Printf.fprintf oc "\tslt\t$at, %s, %s\n" x y;
+      g'_tail_ifeq oc "$at" "$zero" e2 e1
+  | Tail, IfGE(x, C(y), e1, e2) ->
+      Printf.fprintf oc "\taddiu\t$at, $zero, %d\n" y;
+      Printf.fprintf oc "\tslt\t$at, %s, $at\n" x;
       g'_tail_ifeq oc "$at" "$zero" e2 e1
   | Tail, IfFEq(x, y, e1, e2) ->
     raise Not_supported_yet
@@ -188,11 +196,19 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       (* g'_tail_if oc e1 e2 "jbe" "ja" *)
   | NonTail(z), IfEq(x, y', e1, e2) ->
       g'_non_tail_ifeq oc (NonTail(z)) x (pp_id_or_imm y') e1 e2
-  | NonTail(z), IfLE(x, y', e1, e2) ->
-      Printf.fprintf oc "\tslt\t$at, %s, %s\n" (pp_id_or_imm y') x;
+  | NonTail(z), IfLE(x, V(y), e1, e2) ->
+      Printf.fprintf oc "\tslt\t$at, %s, %s\n" y x;
       g'_non_tail_ifeq oc (NonTail(z)) "$at" "$zero" e1 e2
-  | NonTail(z), IfGE(x, y', e1, e2) ->
-      Printf.fprintf oc "\tslt\t$at, %s, %s\n" x (pp_id_or_imm y');
+  | NonTail(z), IfLE(x, C(y), e1, e2) ->
+      Printf.fprintf oc "\taddiu\t$at, $zero, %d\n" y;
+      Printf.fprintf oc "\tslt\t$at, $at, %s\n" x;
+      g'_non_tail_ifeq oc (NonTail(z)) "$at" "$zero" e1 e2
+  | NonTail(z), IfGE(x, V(y), e1, e2) ->
+      Printf.fprintf oc "\tslt\t$at, %s, %s\n" x y;
+      g'_non_tail_ifeq oc (NonTail(z)) "$at" "$zero" e2 e1
+  | NonTail(z), IfGE(x, C(y), e1, e2) ->
+      Printf.fprintf oc "\taddiu\t$at, $zero, %d\n" y;
+      Printf.fprintf oc "\tslt\t$at, %s, $at\n" x;
       g'_non_tail_ifeq oc (NonTail(z)) "$at" "$zero" e2 e1
   | NonTail(z), IfFEq(x, y, e1, e2) ->
     raise Not_supported_yet
@@ -275,7 +291,7 @@ and g'_args oc x_reg_cl ys zs =
       (0, x_reg_cl)
       ys in
   List.iter
-    (fun (y, r) -> Printf.fprintf oc "\taddu\t%s, %s\n" r y)
+    (fun (y, r) -> Printf.fprintf oc "\taddu\t%s, %s, $zero\n" r y)
     (shuffle sw yrs);
   let (d, zfrs) =
     List.fold_left
