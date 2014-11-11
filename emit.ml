@@ -181,11 +181,11 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       g'_tail_ifeq oc "$at" "$zero" e1 e2
   | Tail, IfGE(x, V(y), e1, e2) ->
       Printf.fprintf oc "\tslt\t$at, %s, %s\n" x y;
-      g'_tail_ifeq oc "$at" "$zero" e2 e1
+      g'_tail_ifeq oc "$at" "$zero" e1 e2
   | Tail, IfGE(x, C(y), e1, e2) ->
       Printf.fprintf oc "\taddiu\t$at, $zero, %d\n" y;
       Printf.fprintf oc "\tslt\t$at, %s, $at\n" x;
-      g'_tail_ifeq oc "$at" "$zero" e2 e1
+      g'_tail_ifeq oc "$at" "$zero" e1 e2
   | Tail, IfFEq(x, y, e1, e2) ->
     raise Not_supported_yet
       (* Printf.fprintf oc "\tcomisd\t%s, %s\n" y x; *)
@@ -205,11 +205,11 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       g'_non_tail_ifeq oc (NonTail(z)) "$at" "$zero" e1 e2
   | NonTail(z), IfGE(x, V(y), e1, e2) ->
       Printf.fprintf oc "\tslt\t$at, %s, %s\n" x y;
-      g'_non_tail_ifeq oc (NonTail(z)) "$at" "$zero" e2 e1
+      g'_non_tail_ifeq oc (NonTail(z)) "$at" "$zero" e1 e2
   | NonTail(z), IfGE(x, C(y), e1, e2) ->
       Printf.fprintf oc "\taddiu\t$at, $zero, %d\n" y;
       Printf.fprintf oc "\tslt\t$at, %s, $at\n" x;
-      g'_non_tail_ifeq oc (NonTail(z)) "$at" "$zero" e2 e1
+      g'_non_tail_ifeq oc (NonTail(z)) "$at" "$zero" e1 e2
   | NonTail(z), IfFEq(x, y, e1, e2) ->
     raise Not_supported_yet
       (* Printf.fprintf oc "\tcomisd\t%s, %s\n" y x; *)
@@ -241,10 +241,10 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       let ss = stacksize () in
       if ss > 0 then
 	(Printf.fprintf oc "\tsw\t$ra, %d($sp)\n" ss;
-	Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (ss+4));
+	Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (-1*ss-4));
       Printf.fprintf oc "\tjal\t%s\n" x;
       if ss > 0 then
-	(Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (-1*ss-4);
+	(Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (ss+4);
 	 Printf.fprintf oc "\tlw\t$ra, %d($sp)\n" ss);
       if List.mem a allregs && a <> reg_ret then
         Printf.fprintf oc "\taddu\t%s, $v0, $zero\n" a 
