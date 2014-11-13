@@ -3,7 +3,7 @@ import sys
 
 def add_init(out):
     out.write('start:\n')
-    out.write('\taddiu\t$sp, $zero, 65532\n')  # set $sp = 0x00007ffc
+    out.write('\taddiu\t$sp, $zero, 10000\n')  # set $sp 
     out.write('\tj\tmain\n')
     return
 
