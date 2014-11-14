@@ -15,7 +15,7 @@ min_caml_floor:
         bc1t    floor.2                   #   goto floor.3
         add.s   $f2, $f0, 0x4b000000      # $f2 <- $f0 + 8388608.0
         sub.s   $f2, $f2, 0x4b000000      # $f2 <- $f2 - 8388608.0
-        c.olt.s $f2, $f0                  # if ($f2 < $f0) //OK
+        c.ole.s $f2, $f0                  # if ($f2 <= $f0) //OK
         bc1t    floor.4                   #   goto floor.4
         sub.s   $f0, $f2, 0x3f800000      # $f0 <- $f2 - 1.0
         jr      $ra                       # return $f0
@@ -26,7 +26,7 @@ floor.1:                                  # // $f0 < 0.0
         bc1t    floor.2                   #   goto floor.3
         sub.s   $f2, $f0, 0x4b000000      # $f2 <- $f0 - 8388608.0
         add.s   $f2, $f2, 0x4b000000      # $f2 <- $f2 + 8388608.0
-        c.olt.s $f2, $f0                  # if ($f2 < $f0)
+        c.ole.s $f2, $f0                  # if ($f2 <= $f0)
         bc1t    floor.4                   #   goto floor.4
         sub.s   $f0, $f2, 0x3f800000      # $f0 <- $f2 - 1.0
         jr      $ra                       # return $f0
