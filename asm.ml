@@ -7,6 +7,7 @@ type t = (* 命令の列 (caml2html: sparcasm_t) *)
 and exp = (* 一つ一つの命令に対応する式 (caml2html: sparcasm_exp) *)
   | Nop                           (* 何もしない *)
   | Set of int                    (* 即値代入 *)
+  | FSet of float                 (* 浮動小数点数即値代入 *)
   | SetL of Id.l
   | Mov of Id.t                   (* レジスタ間移動 *)
   | Neg of Id.t                   (* 符号反転 *)
@@ -99,7 +100,7 @@ let rec remove_and_uniq xs = function
 (* free variables in the order of use (for spilling) (caml2html: sparcasm_fv) *)
 let fv_id_or_imm = function V(x) -> [x] | _ -> []
 let rec fv_exp = function
-  | Nop | Set(_) | SetL(_) | Comment(_) | Restore(_) -> []
+  | Nop | Set(_) | FSet(_) | SetL(_) | Comment(_) | Restore(_) -> []
   | Mov(x) | Neg(x) | FMovD(x) | FNegD(x) | Save(x, _) -> [x]
   | Add(x, y') | Sub(x, y') | Ld(x, y', _) | LdDF(x, y', _) -> x :: fv_id_or_imm y'
   | St(x, y, z', _) | StDF(x, y, z', _) -> x :: y :: fv_id_or_imm z'
@@ -119,4 +120,4 @@ let rec concat e1 xt e2 =
   | Ans(exp) -> Let(xt, exp, e2)
   | Let(yt, exp, e1') -> Let(yt, exp, concat e1' xt e2)
 
-let align i = (if i mod 8 = 0 then i else i + 4)
+let align i =  i

@@ -5,6 +5,7 @@ type t =
 and exp =
   | Nop
   | Set of int
+  | FSet of float
   | SetL of Id.l
   | Mov of Id.t
   | Neg of Id.t
