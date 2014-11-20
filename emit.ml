@@ -2,6 +2,7 @@ open Asm
 
 external gethi : float -> int32 = "gethi"
 external getlo : float -> int32 = "getlo"
+external getflt : float -> int32 = "getflt"
 
 let stackset = ref S.empty (* すでにSaveされた変数の集合 (caml2html: emit_stackset) *)
 let stackmap = ref [] (* Saveされた変数の、スタックにおける位置 (caml2html: emit_stackmap) *)
@@ -21,7 +22,7 @@ let locate x =
     | y :: zs when x = y -> 0 :: List.map succ (loc zs)
     | y :: zs -> List.map succ (loc zs) in
   loc !stackmap
-let offset x = -4 * List.hd (locate x)
+let offset x = 4 * List.hd (locate x)
 let stacksize () = align (List.length !stackmap * 4)
 
 let pp_id_or_imm = function
@@ -56,7 +57,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   | NonTail(_), Nop -> ()
   | NonTail(x), Set(i) -> Printf.fprintf oc "\taddiu\t%s, $zero, %d\n" x i
   | NonTail(x), FSet(d) ->
-    Printf.fprintf oc "\tli\t$at, 0x%lx\n" (getlo d);
+    Printf.fprintf oc "\tli\t$at, 0x%lx\n" (getflt d);
     Printf.fprintf oc "\tmtc1\t$at, %s\n" x
   | NonTail(x), SetL(Id.L(y)) -> 
     Printf.fprintf oc "\taddiu\t%s, $zero, %s\n" x y
@@ -75,7 +76,9 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
     (Printf.fprintf oc "\tsll\t$at, %s, 2\n" z;
      Printf.fprintf oc "\taddu\t$at, $at, %s\n" y;
      Printf.fprintf oc "\tlw\t%s, 0($at)\n" x)
-    else raise Shift_amount_is_not_4_error
+    else
+      (Printf.fprintf oc "NonTail(%s), Ld(%s, V(%s), %d)" x y z i;
+       raise Shift_amount_is_not_4_error)
   | NonTail(x), Ld(y, C(j), i) -> Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (j * i) y
   | NonTail(_), St(x, y, V(z), i) -> 
     if i = 1 then
@@ -85,7 +88,9 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       (Printf.fprintf oc "\tsll\t$at, %s, 2\n" z;
        Printf.fprintf oc "\taddu\t$at, $at, %s\n" y;
        Printf.fprintf oc "\tsw\t%s, 0($at)\n" x)
-    else raise Shift_amount_is_not_4_error
+    else 
+      (Printf.fprintf oc "NonTail(_), st(%s, %s, V(%s), %d)" x y z i;
+       raise Shift_amount_is_not_4_error)
   | NonTail(_), St(x, y, C(j), i) -> Printf.fprintf oc "\tsw\t%d(%s), %s\n" (j * i) y x
   | NonTail(x), FMovD(y) -> Printf.fprintf oc "\tmov.s\t%s, %s\n" x y
   | NonTail(x), FNegD(y) -> raise Not_supported_yet (* $f0 = 0にすれば簡単 *)
@@ -98,7 +103,11 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
 	Printf.fprintf oc "\taddu\t$at, %s, $zero\n" z
      else if i = 4 then
        Printf.fprintf oc "\tsll\t$at, %s, 2\n" z
-     else raise Shift_amount_is_not_4_error);
+     else if i = 8 then
+       Printf.fprintf oc "\tsll\t$at, %s, 3\n" z
+     else 
+       (Printf.fprintf oc "NonTail(%s), LdDF(%s, V(%s), %d)" x y z i;
+	raise Shift_amount_is_not_4_error));
     Printf.fprintf oc "\taddu\t$at, %s, $at\n" y;
     Printf.fprintf oc "\tlw\t$at, 0($at)\n";
     Printf.fprintf oc "\tmtc1\t$at, %s\n" x
@@ -111,7 +120,11 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
     	Printf.fprintf oc "\taddu\t$fp, %s, $zero\n" z
      else if i = 4 then
        Printf.fprintf oc "\tsll\t$fp, %s, 2\n" z
-     else raise Shift_amount_is_not_4_error);
+     else if i = 8 then
+       Printf.fprintf oc "\tsll\t$at, %s, 3\n" z
+     else
+       (Printf.fprintf oc "NonTail(_), StDF(%s, %s, V(%s), %d)" x y z i;
+        raise Shift_amount_is_not_4_error));
     Printf.fprintf oc "\taddu, $fp, %s, $fp\n" y;
     Printf.fprintf oc "\tmfc1\t$at, %s\n" x;
     Printf.fprintf oc "\tsw\t$at, 0($fp)\n"
@@ -122,18 +135,18 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   (* 退避の仮想命令の実装 (caml2html: emit_save) *)
   | NonTail(_), Save(x, y) when List.mem x allregs && not (S.mem y !stackset) ->
       save y;
-      Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x (offset y) reg_sp
+      Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x (-1*offset y) reg_sp
   | NonTail(_), Save(x, y) when List.mem x allfregs && not (S.mem y !stackset) ->
       savef y;
       Printf.fprintf oc "\tmfc1\t$at, %s\n" x;
-      Printf.fprintf oc "\tsw\t$at, %d(%s)\n" (offset y) reg_sp
+      Printf.fprintf oc "\tsw\t$at, %d(%s)\n" (-1*offset y) reg_sp
   | NonTail(_), Save(x, y) -> assert (S.mem y !stackset); ()
   (* 復帰の仮想命令の実装 (caml2html: emit_restore) *)
   | NonTail(x), Restore(y) when List.mem x allregs ->
-      Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (offset y) reg_sp
+      Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (-1*offset y) reg_sp
   | NonTail(x), Restore(y) ->
       assert (List.mem x allfregs);
-      Printf.fprintf oc "\tlw\t$at, %d(%s)\n" (offset y) reg_sp;
+      Printf.fprintf oc "\tlw\t$at, %d(%s)\n" (-1*offset y) reg_sp;
       Printf.fprintf oc "\tmtc1\t$at, %s\n" x
   (* 末尾だったら計算結果を$v0にセットしてret (caml2html: emit_tailret) *)
   | Tail, (Nop | St _ | StDF _ | Comment _ | Save _ as exp) ->
@@ -223,12 +236,12 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
       g'_args oc [] ys zs;
       let ss = stacksize () in
       if ss > 0 then
-	(Printf.fprintf oc "\tsw\t$ra, %d($sp)\n" ss;
+	(Printf.fprintf oc "\tsw\t$ra, %d($sp)\n" (-1*ss);
 	Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (-1*ss-4));
       Printf.fprintf oc "\tjal\t%s\n" x;
       if ss > 0 then
 	(Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (ss+4);
-	 Printf.fprintf oc "\tlw\t$ra, %d($sp)\n" ss);
+	 Printf.fprintf oc "\tlw\t$ra, %d($sp)\n" (-1*ss));
       if List.mem a allregs && a <> reg_ret then
         Printf.fprintf oc "\taddu\t%s, $v0, $zero\n" a 
       else if List.mem a allfregs && a <> fregs.(0) then
@@ -288,7 +301,7 @@ and g'_non_tail_if_ftrue oc dest e1 e2 =
 and g'_args oc x_reg_cl ys zs =
   assert (List.length ys <= Array.length regs - List.length x_reg_cl);
   assert (List.length zs <= Array.length fregs);
-  let sw = Printf.sprintf "%d(%s)" (stacksize ()) reg_sp in
+  let sw = Printf.sprintf "%d(%s)" (-1*stacksize ()) reg_sp in
   let (i, yrs) =
     List.fold_left
       (fun (i, yrs) y -> (i + 1, (y, regs.(i)) :: yrs))

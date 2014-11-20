@@ -7,6 +7,17 @@ typedef union {
   double d;
 } dbl;
 
+typedef union {
+  int32 i;
+  float f;
+} flt;
+
+value getflt(value v) {
+  flt f;
+  f.f = (float)Double_val(v);
+  return copy_int32(f.i);
+}
+
 value gethi(value v) {
   dbl d;
   d.d = Double_val(v);
