@@ -4,6 +4,7 @@ import sys
 def add_init(out):
     out.write('start:\n')
     out.write('\taddiu\t$sp, $zero, 10000\n')  # set $sp 
+    out.write('\taddiu\t$gp, $zero, 5000\n')   # set $gp
     out.write('\tj\tmain\n')
     return
 

@@ -91,7 +91,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
     else 
       (Printf.fprintf oc "NonTail(_), st(%s, %s, V(%s), %d)" x y z i;
        raise Shift_amount_is_not_4_error)
-  | NonTail(_), St(x, y, C(j), i) -> Printf.fprintf oc "\tsw\t%d(%s), %s\n" (j * i) y x
+  | NonTail(_), St(x, y, C(j), i) -> Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x (j * i) y
   | NonTail(x), FMovD(y) -> Printf.fprintf oc "\tmov.s\t%s, %s\n" x y
   | NonTail(x), FNegD(y) -> raise Not_supported_yet (* $f0 = 0にすれば簡単 *)
   | NonTail(x), FAddD(y, z) -> Printf.fprintf oc "\tadd.s\t%s, %s, %s\n" x y z
@@ -125,12 +125,12 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
      else
        (Printf.fprintf oc "NonTail(_), StDF(%s, %s, V(%s), %d)" x y z i;
         raise Shift_amount_is_not_4_error));
-    Printf.fprintf oc "\taddu, $fp, %s, $fp\n" y;
+    Printf.fprintf oc "\taddu\t$fp, %s, $fp\n" y;
     Printf.fprintf oc "\tmfc1\t$at, %s\n" x;
     Printf.fprintf oc "\tsw\t$at, 0($fp)\n"
   | NonTail(_), StDF(x, y, C(j), i) ->
     Printf.fprintf oc "\tmfc1\t$at, %s\n" x;
-    Printf.fprintf oc "\tsw\t$at, %d(%s)" (j * i) y
+    Printf.fprintf oc "\tsw\t$at, %d(%s)\n" (j * i) y
   | NonTail(_), Comment(s) -> Printf.fprintf oc "\t# %s\n" s
   (* 退避の仮想命令の実装 (caml2html: emit_save) *)
   | NonTail(_), Save(x, y) when List.mem x allregs && not (S.mem y !stackset) ->
@@ -217,21 +217,20 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   (* 関数呼び出しの仮想命令の実装 (caml2html: emit_call) *)
   | Tail, CallCls(x, ys, zs) -> (* 末尾呼び出し (caml2html: emit_tailcall) *)
       g'_args oc [(x, reg_cl)] ys zs; (* 引数のセット *)
-      Printf.fprintf oc "\tj\t%s\n" x;
+      Printf.fprintf oc "\tjr\t%s\n" reg_cl;
   | Tail, CallDir(Id.L(x), ys, zs) -> (* 末尾呼び出し *)
       g'_args oc [] ys zs;
       Printf.fprintf oc "\tj\t%s\n" x;
   | NonTail(a), CallCls(x, ys, zs) ->
-    raise Not_supported_yet
-      (* g'_args oc [(x, reg_cl)] ys zs; *)
-      (* let ss = stacksize () in *)
-      (* if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp ss; *)
-      (* Printf.fprintf oc "\tcall\t*(%s)\n" reg_cl; *)
-      (* if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %d\n" reg_sp (-1*ss); *)
-      (* if List.mem a allregs && a <> regs.(0) then *)
-      (*   Printf.fprintf oc "\taddu\t%s, %s\n" a regs.(0) *)
-      (* else if List.mem a allfregs && a <> fregs.(0) then *)
-      (*   Printf.fprintf oc "\tmovsd\t%s, %s\n" fregs.(0) a *)
+      g'_args oc [(x, reg_cl)] ys zs;
+      let ss = stacksize () in
+      if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (-1*ss);
+      Printf.fprintf oc "\tjalr\t%s\n" reg_cl;
+      if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp ss;
+      if List.mem a allregs && a <> regs.(0) then
+        Printf.fprintf oc "\taddu\t%s, %s, $zero\n" a regs.(0)
+      else if List.mem a allfregs && a <> fregs.(0) then
+        Printf.fprintf oc "\tmov.s\t%s, %s\n" a fregs.(0)
   | NonTail(a), CallDir(Id.L(x), ys, zs) ->
       g'_args oc [] ys zs;
       let ss = stacksize () in
