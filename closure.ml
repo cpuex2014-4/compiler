@@ -6,6 +6,8 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | Neg of Id.t
   | Add of Id.t * Id.t
   | Sub of Id.t * Id.t
+  | Mul of Id.t * Id.t
+  | Div of Id.t * Id.t
   | FNeg of Id.t
   | FAdd of Id.t * Id.t
   | FSub of Id.t * Id.t
@@ -48,6 +50,8 @@ let rec print_closure outchan exp indent =
     | Neg id -> out ("Neg "^id)
     | Add (id0, id1) -> out ("Add "^id0^" "^id1)
     | Sub (id0, id1) -> out ("Sub "^id0^" "^id1)
+    | Mul (id0, id1) -> out ("Sub "^id0^" "^id1)
+    | Div (id0, id1) -> out ("Sub "^id0^" "^id1)
     | FNeg id -> out ("FNeg "^id)
     | FAdd (id0, id1) -> out ("FAdd "^id0^" "^id1)
     | FSub (id0, id1) -> out ("FSub "^id0^" "^id1)
@@ -154,6 +158,8 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2
   | KNormal.Neg(x) -> Neg(x)
   | KNormal.Add(x, y) -> Add(x, y)
   | KNormal.Sub(x, y) -> Sub(x, y)
+  | KNormal.Mul(x, y) -> Mul(x, y)
+  | KNormal.Div(x, y) -> Div(x, y)
   | KNormal.FNeg(x) -> FNeg(x)
   | KNormal.FAdd(x, y) -> FAdd(x, y)
   | KNormal.FSub(x, y) -> FSub(x, y)

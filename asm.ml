@@ -13,6 +13,8 @@ and exp = (* 一つ一つの命令に対応する式 (caml2html: sparcasm_exp) *
   | Neg of Id.t                   (* 符号反転 *)
   | Add of Id.t * id_or_imm       (* 加算 *)
   | Sub of Id.t * id_or_imm            (* 減算 *)
+  | Mul of Id.t * id_or_imm            (* 乗算に見せかけて *4 しかしない *)
+  | Div of Id.t * id_or_imm            (* 除算にみせかけて /2 しかしない *)
   | Ld of Id.t * id_or_imm * int  (* ロード *)
   | St of Id.t * Id.t * id_or_imm * int  (* ストア *)
   | FMovD of Id.t                 (* 浮動小数点数移動 *)
