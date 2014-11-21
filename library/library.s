@@ -112,15 +112,15 @@ min_caml_kernel_cos:
         jr      $ra
 
 # sin
-# $f0=A, $s1=signFlag( 1 or -1), $f2 = 0.0
+# $f0=A, $s1=signFlag (even or odd), $f2 = 0.0
 min_caml_sin:
-        mtc1    $zero, $f2                # $f2 <-  0.0
-        addiu   $s1, $zero, 1             # $s1 <-  1   //signFlag
-        c.olt.s $f0, $f2                  # if ($f0 < 0.0) {
-        bc1f    sin_endif.1               #
-        sub.s   $f0, $f2, $f0             #   $f0 <- -$f0 //abs
-        subu    $s1, $zero, $s1           #   reverse(flg)
-sin_endif.1:                              # }
+        mfc1    $s2, $f0
+        srl     $s1, $s2, 0x1f            # $s1 <- sgn($f0)
+        sll     $s2, $s2, 1
+        srl     $s2, $s2, 1
+        mtc1    $s2, $f0                  # $f0 <- abs($f0)
+
+
         addiu   $sp, $sp, -8              #
         sw      $ra, 4($sp)               #
         sw      $s1, 0($sp)               # store signFlag
@@ -132,7 +132,7 @@ sin_endif.1:                              # }
         c.ole.s $f3, $f0                  # if (PI <= $f0) {
         bc1f    sin_endif.2               #
         sub.s   $f0, $f0, $f3             #   $f0 <- $f0 - PI
-        subu    $s1, $zero, $s1           #   reverse(flg)
+        addiu    $s1, $s1, 0x1            #   reverse(flg)
 sin_endif.2:                              # }
         li      $s0, 0x3fc90fdb           #
         mtc1    $s0, $f4                  # $f4 <-  PI/2
@@ -152,42 +152,44 @@ sin_else.1:                               # } else {
         jal     min_caml_kernel_cos       #   $f0 <- kernel_cos($f0)
 sin_endif.4:                              # }
         lw      $s1, 0($sp)               # load signFlag
-        mtc1    $zero, $f2                # $f2 <- 0.0
-        slt     $s2, $s1, $zero           # if (signFlag < 0) {
-        beq     $s2, $zero, sin_endif.5   #
-        sub.s   $f0, $f2, $f0             #   $f0 <- 0.0 - $f0
-sin_endif.5:                              # }
+        sll     $s1, $s1, 31
+        li      $s2, 0x80000000           # $s2 <- 1<<31
+        mfc1    $s2, $f0                  #
+        addu    $s2, $s1, $s2             # add Flag
+        mtc1    $s2, $f0                  #
+
         lw      $ra, 4($sp)
         addiu   $sp, $sp, 8
         jr      $ra
 
 
 # cos
-# $f0=A, $s1=signFlag( 1 or -1), $f2 = 0.0
+# $f0=A, $s1=signFlag (even or odd), $f2 = 0.0
 min_caml_cos:
-        mtc1    $zero, $f2                # $f2 <-  0.0
-        c.olt.s $f0, $f2                  # if ($f0 < 0.0) {
-        bc1f    cos_endif.1               #
-        sub.s   $f0, $f2, $f0             #   $f0 <- -$f0 //abs
-cos_endif.1:                              # }
+        mfc1    $s2, $f0
+        sll     $s2, $s2, 1
+        srl     $s2, $s2, 1
+        mtc1    $s2, $f0                  # $f0 <- abs($f0)
+
         addiu   $sp, $sp, -8
         sw      $ra, 4($sp)
         jal     min_caml_reduction2Pi     # $f0 <- reduction(abs(A))
-        addiu   $s1, $zero, 1             # $s1 <-  1   //signFlag
+
+        mov     $s1, $zero                # $s1 <- '+'
         mtc1    $zero, $f2                # $f2 <-  0.0
         li      $s0, 0x40490fda
         mtc1    $s0, $f3                  # $f3 <-  PI
         c.ole.s $f3, $f0                  # if (PI <= $f0) {
-        bc1f    cos_endif.2
+        bc1f    cos_endif.2               #
         sub.s   $f0, $f0, $f3             #   $f0 <- $f0 - PI
-        subu    $s1, $zero, $s1           #   reverse(flg)
+        addiu   $s1, $s1, 0x1             #  reverse(flg)
 cos_endif.2:                              # }
         li      $s0, 0x3fc90fdb
         mtc1    $s0, $f4                  # $f4 <-  PI/2
         c.ole.s $f4, $f0                  # if (PI/2 <= $f0) {
-        bc1f    cos_endif.3
+        bc1f    cos_endif.3               #
         sub.s   $f0, $f3, $f0             #   $f0 <- PI - $f0
-        subu    $s1, $zero, $s1           #   reverse(flg)
+        addiu   $s1, $s1, 0x1             #   reverse(flg)
 cos_endif.3:                              # }
         li      $s0, 0x3f490fdb
         mtc1    $s0, $f5                  # $f5 <-  PI/4
@@ -201,11 +203,11 @@ cos_else.1:                               # } else {
         jal     min_caml_kernel_sin       #   $f0 <- kernel_sin($f0)
 cos_endif.4:                              # }
         lw      $s1, 0($sp)               # load signFlag
-        mtc1    $zero, $f2                # $f2 <- 0.0
-        slt     $s2, $s1, $zero           # if (signFlag < 0) {
-        beq     $s2, $zero, cos_endif.5   #
-        sub.s   $f0, $f2, $f0             #   $f0 <- 0.0 - $f0
-cos_endif.5:                              # }
+        sll     $s1, $s1, 31
+        li      $s2, 0x80000000           # $s2 <- 1<<31
+        mfc1    $s2, $f0                  #
+        addu    $s2, $s1, $s2             # add Flag
+        mtc1    $s2, $f0                  #
         lw      $ra, 4($sp)
         addiu   $sp, $sp, 8
         jr      $ra
