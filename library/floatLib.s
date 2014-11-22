@@ -270,8 +270,12 @@ min_caml_atan:
 
 # Case 1: |A| < 0.4375
 atan_case.1:
-        jal     min_caml_kernel_atan
-        jr      $ra
+        addiu   $sp, $sp, -4              #
+        sw      $ra, 0($sp)               #
+        jal     min_caml_kernel_atan      #
+        lw      $ra, 0($sp)               #
+        addiu   $sp, $sp,  4              #
+        jr      $ra                       #
 
 # Case 2: 0.4375 <= |A| < 2.4375
 # $f0 = A, $f1 = |A|
