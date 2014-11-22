@@ -64,8 +64,8 @@ reduction2Pi_endif.1:                     #   }
         jr      $ra
 
 
-# kernel_sin
-# A + 0xbe2aaaac * A^3 + 0x3c088666 * A^5 + 0xb94d64b6 * A^7
+# kernel_sin(A)
+# = A + 0xbe2aaaac * A^3 + 0x3c088666 * A^5 + 0xb94d64b6 * A^7
 min_caml_kernel_sin:
         li      $s0, 0xbe2aaaac
         mtc1    $s0, $f3                  # $f3 <- -0.16666668
@@ -85,8 +85,8 @@ min_caml_kernel_sin:
         add.s   $f0, $f0, $f5             # $f0 <- $f0 + $f5
         jr      $ra
 
-# kernel_cos
-# 1.0 + 0xbf000000 * A^2 + 0x3d2aa789 * A^4 + 0xbab38106 * A^6
+# kernel_cos(A)
+# = 1.0 + 0xbf000000 * A^2 + 0x3d2aa789 * A^4 + 0xbab38106 * A^6
 min_caml_kernel_cos:
         li      $s0, 0xbf000000
         mtc1    $s0, $f4                  # $f4 <- 0.5
@@ -207,3 +207,119 @@ cos_endif.4:                              # }
         lw      $ra, 4($sp)
         addiu   $sp, $sp, 8
         jr      $ra
+
+
+# kernel_atan(A)
+# = A + 0xbeaaaaaa * A^3  +  0x3e4ccccd * A^5  + 0xbe124925 * A^7
+#     + 0x3de38e38 * A^9  +  0xbdb7d66e * A^11 + 0x3d75e7c5 * A^13
+min_caml_kernel_atan:
+        # A ~ A^7
+        li      $s0, 0xbeaaaaaa           #
+        mtc1    $s0, $f3                  # $f3 <- -0.3333333
+        li      $s0, 0x3e4ccccd           #
+        mtc1    $s0, $f4                  # $f4 <-  0.2
+        li      $s0, 0xbe124925           #
+        mtc1    $s0, $f5                  # $f5 <- -0.142857142
+        mul.s   $f1, $f0, $f0             # $f1 <- A^2
+        mul.s   $f2, $f1, $f0             # $f2 <- A^3
+        mul.s   $f3, $f3, $f2             # $f3 <- -0.3333333   * A^3
+        add.s   $f0, $f0, $f3             # $f0 <- $f0 + $f3
+        mul.s   $f2, $f2, $f1             # $f2 <- A^5
+        mul.s   $f4, $f4, $f2             # $f4 <-  0.2         * A^5
+        add.s   $f0, $f0, $f4             # $f0 <- $f0 + $f4
+        mul.s   $f2, $f2, $f1             # $f2 <- A^7
+        mul.s   $f5, $f5, $f2             # $f5 <- -0.142857142 * A^7
+        add.s   $f0, $f0, $f5             # $f0 <- $f0 + $f5
+
+        # A^9 ~ A^13
+        li      $s0, 0x3de38e38           #
+        mtc1    $s0, $f3                  # $f3 <-  0.111111104
+        li      $s0, 0xbdb7d66e           #
+        mtc1    $s0, $f4                  # $f4 <- -0.08976446
+        li      $s0, 0x3d75e7c5           #
+        mtc1    $s0, $f5                  # $f5 <-  0.060035485
+        mul.s   $f2, $f2, $f1             # $f2 <- A^9
+        mul.s   $f3, $f3, $f2             # $f3 <-  0.111111104 * A^9
+        add.s   $f0, $f0, $f3             # $f0 <- $f0 + $f3
+        mul.s   $f2, $f2, $f1             # $f2 <- A^11
+        mul.s   $f4, $f4, $f2             # $f4 <- -0.08976446  * A^11
+        add.s   $f0, $f0, $f4             # $f0 <- $f0 + $f4
+        mul.s   $f2, $f2, $f1             # $f2 <- A^13
+        mul.s   $f5, $f5, $f2             # $f5 <-  0.060035485 * A^13
+        add.s   $f0, $f0, $f5             # $f0 <- $f0 + $f5
+        jr      $ra
+
+# atan
+# $f0=A, $f1=abs(A)
+min_caml_atan:
+        mfc1    $s0, $f0                  #
+        sll     $s0, $s0, 1               #
+        srl     $s0, $s0, 1               #
+        mtc1    $s0, $f1                  # $f1 <- abs($f0)
+        li      $s0, 0x3ee00000           #
+        mtc1    $s0, $f2                  # $f2 <- 0.4375
+        c.olt.s $f1, $f2                  # if (|A| < 0.4375)
+        bc1t    atan_case.1               #   goto atan_case.1
+        li      $s0, 0x401c0000           #
+        mtc1    $s0, $f2                  # $f2 <- 2.4375
+        c.olt.s $f1, $f2                  # if (|A| < 2.4375)
+        bc1t    atan_case.2               #   goto atan_case.2
+        j       atan_case.3               # goto atan_case.3
+
+
+
+# Case 1: |A| < 0.4375
+atan_case.1:
+        jal     min_caml_kernel_atan
+        jr      $ra
+
+# Case 2: 0.4375 <= |A| < 2.4375
+# $f0 = A, $f1 = |A|
+atan_case.2:
+        addiu   $sp, $sp, -8              #
+        sw      $ra, 4($sp)               #
+        mfc1    $s0, $f0                  #
+        srl     $s0, $s0, 31              #
+        sw      $s0, 0($sp)               # store sign(A)
+        li      $s0, 0x3f800000           #
+        mtc1    $s0, $f2                  # $f2 <- 1.0
+        sub.s   $f3, $f1, $f2             # $f3 <- |A| - 1.0
+        add.s   $f4, $f1, $f2             # $f4 <- |A| + 1.0
+        div.s   $f0, $f3, $f4             # $f0 <- $f3 / $f4
+        jal     min_caml_kernel_atan      # $f0 <- kernel_atan($f3/$f4)
+        li      $s0, 0x3f490fdb           #
+        mtc1    $s0, $f1                  # $f1 <- PI/4
+        add.s   $f0, $f0, $f1             # $f0 <- kernel_atan((|A|-1)/(|A|+1)) + PI/4
+        lw      $s0, 0($sp)               # $s0 <- sign(A)
+        sll     $s0, $s0, 31              # $s0 <- sign << 31
+        mfc1    $s1, $f0                  #
+        or      $s1, $s0, $s1             # $s1 <- $f0 | (sign<<31)
+        mtc1    $s1, $f0                  #
+        lw      $ra, 4($sp)               #
+        addiu   $sp, $sp, 8               #
+        jr      $ra                       #
+
+# Case 3: 2.4375 < |A|
+# $f0 = A, $f1 = |A|
+atan_case.3:
+        addiu   $sp, $sp, -8              #
+        sw      $ra, 4($sp)               #
+        mfc1    $s0, $f0                  #
+        mfc1    $s0, $f0                  #
+        srl     $s0, $s0, 31              #
+        sw      $s0, 0($sp)               # store sign(A)
+        li      $s0, 0x3f800000           #
+        mtc1    $s0, $f2                  # $f2 <- 1.0
+        div.s   $f0, $f2, $f1             # $f0 <- 1.0/|A|
+        jal     min_caml_kernel_atan      # $f0 <- kernel_atan(1/|A|)
+        li      $s0, 0x3fc90fdb           #
+        mtc1    $s0, $f1                  # $f1 <- PI/2
+        sub.s   $f0, $f1, $f0             # $f0 <- PI/2 - $f0
+        lw      $s0, 0($sp)               # $s0 <- sign(A)
+        sll     $s0, $s0, 31              # $s0 <- sign << 31
+        mfc1    $s1, $f0                  #
+        or      $s1, $s0, $s1             # $s1 <- $f0 | (sign<<31)
+        mtc1    $s1, $f0                  #
+        lw      $ra, 4($sp)               #
+        addiu   $sp, $sp, 8               #
+        jr      $ra                       #
