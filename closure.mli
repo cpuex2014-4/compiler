@@ -22,6 +22,7 @@ type t =
   | AppDir of Id.l * Id.t list
   | Tuple of Id.t list
   | LetTuple of (Id.t * Type.t) list * Id.t * t
+  | ExtTuple of Id.l
   | Get of Id.t * Id.t
   | Put of Id.t * Id.t * Id.t
   | ExtArray of Id.l

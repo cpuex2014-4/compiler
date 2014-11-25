@@ -22,6 +22,7 @@ type t = (* クロージャ変換後の式 (caml2html: closure_t) *)
   | AppDir of Id.l * Id.t list
   | Tuple of Id.t list
   | LetTuple of (Id.t * Type.t) list * Id.t * t
+  | ExtTuple of Id.l
   | Get of Id.t * Id.t
   | Put of Id.t * Id.t * Id.t
   | ExtArray of Id.l
@@ -91,6 +92,9 @@ let rec print_closure outchan exp indent =
       (out "LetTuple";
        print_name_list outchan namel (indent + 1);
        print_closure outchan t (indent + 1))
+    | ExtTuple label ->
+      (out "ExtTuple";
+       Id.print_label outchan label (indent + 1))
     | Get (id0, id1) ->
       (out "Get";
        Id.print_id outchan id0 (indent + 1);
@@ -137,7 +141,7 @@ let print_prog outchan fundef indent =
        print_closure outchan t indent)
   
 let rec fv = function
-  | Unit | Int(_) | Float(_) | ExtArray(_) -> S.empty
+  | Unit | Int(_) | Float(_) | ExtTuple(_) | ExtArray(_) -> S.empty
   | Neg(x) | FNeg(x) -> S.singleton x
   | Add(x, y) | Sub(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
   | IfEq(x, y, e1, e2)| IfLE(x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
@@ -197,6 +201,7 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2
   | KNormal.App(f, xs) -> AppCls(f, xs)
   | KNormal.Tuple(xs) -> Tuple(xs)
   | KNormal.LetTuple(xts, y, e) -> LetTuple(xts, y, g (M.add_list xts env) known e)
+  | KNormal.ExtTuple(x) -> ExtTuple(Id.L(x))
   | KNormal.Get(x, y) -> Get(x, y)
   | KNormal.Put(x, y, z) -> Put(x, y, z)
   | KNormal.ExtArray(x) -> ExtArray(Id.L(x))

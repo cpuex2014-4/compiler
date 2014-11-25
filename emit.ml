@@ -60,7 +60,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
     Printf.fprintf oc "\tli\t$at, 0x%lx\n" (getflt d);
     Printf.fprintf oc "\tmtc1\t$at, %s\n" x
   | NonTail(x), SetL(Id.L(y)) -> 
-    Printf.fprintf oc "\taddiu\t%s, $zero, %s\n" x y
+    Printf.fprintf oc "\tla\t%s, %s\n" x y
   | NonTail(x), Mov(y) ->
     if x <> y then Printf.fprintf oc "\taddu\t%s, %s, $zero\n" x y
   | NonTail(x), Neg(y) -> Printf.fprintf oc "\tsubu%s, $zero, %s\n" x y
@@ -154,7 +154,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   | Tail, (Nop | St _ | StDF _ | Comment _ | Save _ as exp) ->
       g' oc (NonTail(Id.gentmp Type.Unit), exp);
       Printf.fprintf oc "\tjr\t$ra\n";
-  | Tail, (Set _ | SetL _ | Mov _ | Neg _ | Add _ | Sub _ | Ld _ as exp) ->
+  | Tail, (Set _ | SetL _ | Mov _ | Neg _ | Add _ | Sub _ | Div _ | Mul _ | Ld _ as exp) ->
       g' oc (NonTail(reg_ret), exp);
       Printf.fprintf oc "\tjr\t$ra\n";
   | Tail, (FSet _ | FMovD _ | FNegD _ | FAddD _ | FSubD _ | FMulD _ | FDivD _ | LdDF _  as exp) ->

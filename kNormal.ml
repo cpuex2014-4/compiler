@@ -22,6 +22,7 @@ type t = (* K正規化後の式 (caml2html: knormal_t) *)
   | App of Id.t * Id.t list
   | Tuple of Id.t list
   | LetTuple of (Id.t * Type.t) list * Id.t * t
+  | ExtTuple of Id.t
   | Get of Id.t * Id.t
   | Put of Id.t * Id.t * Id.t
   | ExtArray of Id.t
@@ -84,6 +85,7 @@ let rec print_kNorm outchan exp indent =
        print_name_list outchan namel (indent + 1);
        Id.print_id outchan id (indent + 1);
        print_kNorm outchan t (indent + 1))
+    | ExtTuple id -> out ("ExtTuple "^id)
     | Get (id0, id1) -> out ("Get "^id0^" "^id1)
     | Put (id0, id1, id2) -> out ("Put "^id0^" "^id1^" "^id2)
     | ExtArray id -> out ("ExtArray "^id)
@@ -106,7 +108,7 @@ and print_name_list outchan namel indent =
        print_name_list outchan res indent)
 
 let rec fv = function (* 式に出現する（自由な）変数 (caml2html: knormal_fv) *)
-  | Unit | Int(_) | Float(_) | ExtArray(_) -> S.empty
+  | Unit | Int(_) | Float(_) | ExtTuple(_) | ExtArray(_) -> S.empty
   | Neg(x) | FNeg(x) -> S.singleton x
   | Add(x, y) | Sub(x, y) | Mul(x, y) | Div(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
   | IfEq(x, y, e1, e2) | IfLE(x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
@@ -195,8 +197,9 @@ let rec g env = function (* K正規化ルーチン本体 (caml2html: knormal_g) 
       let e2', t2 = g (M.add x t env) e2 in
       Let((x, t), e1', e2'), t2
   | Syntax.Var(x) when M.mem x env -> Var(x), M.find x env
-  | Syntax.Var(x) -> (* 外部配列の参照 (caml2html: knormal_extarray) *)
+  | Syntax.Var(x) -> 
       (match M.find x !Typing.extenv with
+      | Type.Tuple(_) as t -> ExtTuple x, t
       | Type.Array(_) as t -> ExtArray x, t
       | _ -> failwith (Printf.sprintf "external variable %s does not have an array type" x))
   | Syntax.LetRec({ Syntax.name = (x, t); Syntax.args = yts; Syntax.body = e1 }, e2) ->

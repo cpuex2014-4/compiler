@@ -40,6 +40,7 @@ let rec g env = function (* α変換ルーチン本体 (caml2html: alpha_g) *)
       LetTuple(List.map (fun (x, t) -> (find x env', t)) xts,
 	       find y env,
 	       g env' e)
+  | ExtTuple(x) -> ExtTuple(x)
   | Get(x, y) -> Get(find x env, find y env)
   | Put(x, y, z) -> Put(find x env, find y env, find z env)
   | ExtArray(x) -> ExtArray(x)

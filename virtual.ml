@@ -120,6 +120,7 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: vir
 	    if not (S.mem x s) then load else (* [XX] a little ad hoc optimization *)
 	    Let((x, t), Ld(y, C(offset), 1), load)) in
       load
+  | Closure.ExtTuple(Id.L(x)) -> Ans(SetL(Id.L("min_caml_" ^ x)))
   | Closure.Get(x, y) -> (* 配列の読み出し (caml2html: virtual_get) *)
       (match M.find x env with
       | Type.Array(Type.Unit) -> Ans(Nop)
