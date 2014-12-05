@@ -309,7 +309,7 @@ and g'_args oc x_reg_cl ys zs =
       (0, x_reg_cl)
       ys in
   List.iter
-    (fun (y, r) -> Printf.fprintf oc "\taddu\t%s, %s, $zero\n" r y)
+    (fun (y, r) -> Printf.fprintf oc "\tmove\t%s, %s\n" r y)
     (shuffle sw yrs);
   let (d, zfrs) =
     List.fold_left
