@@ -1,10 +1,29 @@
 min_caml_print:
-	rsb	$v0
-	jr	$ra
+        li  $t0, 0xFFFF0000
+        sw  $v0, 12($t0)
+        jr  $ra
 min_caml_fprint:
-	mfc1	$at, $f0
-	rsb	$at
-	jr	$ra
+        mfc1  $at, $f0
+        li  $t0, 0xFFFF0000
+        sw  $at, 12($t0)
+        jr  $ra
+min_caml_print_byte:    
+        li  $t0, 0xffff0000
+wr_poll:
+        lw  $t1, 8($t0)
+        andi  $t1, $t1, 0x01
+        beq $t1, $zero, wr_poll
+        sw  $v0, 12($t0)
+        jr  $ra
+min_caml_read_byte:    
+        li  $t0, 0xffff0000
+rd_poll:
+        lw  $t1, 0($t0)
+        andi  $t1, $t1, 0x01
+        beq $t1, $zero, wr_poll
+        lw  $v0, 4($t0)
+        andi  $v0, $v0, 0xff
+        jr  $ra
 min_caml_create_array:
 	sll	$t1, $v0, 2
 	addu	$v0, $gp, $zero

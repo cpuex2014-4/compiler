@@ -31,19 +31,17 @@ let pp_id_or_imm = function
 
 (* 関数呼び出しのために引数を並べ替える(register shuffling) (caml2html: emit_shuffle) *)
 let rec shuffle sw xys =
-  (* remove identical moves *)
   let _, xys = List.partition (fun (x, y) -> x = y) xys in
-  (* find acyclic moves *)
   match List.partition (fun (_, y) -> List.mem_assoc y xys) xys with
-  | [], [] -> []
-  | (x, y) :: xys, [] -> (* no acyclic moves; resolve a cyclic move *)
+    | [], [] -> []
+    | (x, y) :: xys, [] -> (* no acyclic moves; resolve a cyclic move *)
       (y, sw) :: (x, y) :: shuffle sw (List.map
-					 (function
-					   | (y', z) when y = y' -> (sw, z)
-					   | yz -> yz)
-					 xys)
-  | xys, acyc -> acyc @ shuffle sw xys
-
+                                         (function
+                                           | (y', z) when y = y' -> (sw, z)
+                                           | yz -> yz)
+                                         xys)
+    | xys, acyc -> acyc @ shuffle sw xys
+      
 exception Shift_amount_is_not_4_error
 exception Not_supported_yet
 type dest = Tail | NonTail of Id.t (* 末尾かどうかを表すデータ型 (caml2html: emit_dest) *)
@@ -236,13 +234,11 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   | NonTail(a), CallDir(Id.L(x), ys, zs) ->
       g'_args oc [] ys zs;
       let ss = stacksize () in
-      if ss > 0 then
-	(Printf.fprintf oc "\tsw\t$ra, %d($sp)\n" (-1*ss);
-	Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (-1*ss-4));
+      Printf.fprintf oc "\tsw\t$ra, %d($sp)\n" (-ss);
+	    Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (-4-ss);
       Printf.fprintf oc "\tjal\t%s\n" x;
-      if ss > 0 then
-	(Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (ss+4);
-	 Printf.fprintf oc "\tlw\t$ra, %d($sp)\n" (-1*ss));
+	    Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (4+ss);
+	    Printf.fprintf oc "\tlw\t$ra, %d($sp)\n" (-ss);
       if List.mem a allregs && a <> reg_ret then
         Printf.fprintf oc "\taddu\t%s, $v0, $zero\n" a 
       else if List.mem a allfregs && a <> fregs.(0) then
@@ -302,7 +298,8 @@ and g'_non_tail_if_ftrue oc dest e1 e2 =
 and g'_args oc x_reg_cl ys zs =
   assert (List.length ys <= Array.length regs - List.length x_reg_cl);
   assert (List.length zs <= Array.length fregs);
-  let sw = Printf.sprintf "%d(%s)" (-1*stacksize ()) reg_sp in
+  (* let sw = Printf.sprintf "%d(%s)" (-1*stacksize ()) reg_sp in *)
+  let sw = "$at" in
   let (i, yrs) =
     List.fold_left
       (fun (i, yrs) y -> (i + 1, (y, regs.(i)) :: yrs))
@@ -317,7 +314,13 @@ and g'_args oc x_reg_cl ys zs =
       (0, [])
       zs in
   List.iter
-    (fun (z, fr) -> Printf.fprintf oc "\tmov.s\t%s, %s\n" z fr)
+    (fun (z, fr) -> 
+      if z = "$at" then
+        Printf.fprintf oc "\tmtc1\t$at, %s\n" fr
+      else if fr = "$at" then
+        Printf.fprintf oc "\tmfc1\t$at, %s\n" z
+      else
+        Printf.fprintf oc "\tmov.s\t%s, %s\n" fr z)
     (shuffle sw zfrs)
 
 let h oc { name = Id.L(x); args = _; fargs = _; body = e; ret = _ } =
@@ -339,3 +342,7 @@ let f oc (Prog(data, fundefs, e)) =
   stackmap := [];
   Printf.fprintf oc "main:\n";
   g oc (NonTail(regs.(0)), e);
+  Printf.fprintf oc "endLoop:\n";
+  Printf.fprintf oc "\tjal\tmin_caml_read_byte\n";
+  Printf.fprintf oc "\tj\tendLoop\n"
+

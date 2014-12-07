@@ -197,9 +197,9 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数�
       (fun (i, arg_regs, regenv) y ->
         let r = regs.(i) in
         (i + 1,
-	 arg_regs @ [r],
-	 (assert (not (is_reg y));
-	  M.add y r regenv)))
+	       arg_regs @ [r],
+	       (assert (not (is_reg y));
+	        M.add y r regenv)))
       (0, [], regenv)
       ys in
   let (d, farg_regs, regenv) =
@@ -207,10 +207,10 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数�
       (fun (d, farg_regs, regenv) z ->
         let fr = fregs.(d) in
         (d + 1,
-	 farg_regs @ [fr],
-	 (assert (not (is_reg z));
-	  M.add z fr regenv)))
-      (2, [], regenv)
+	       farg_regs @ [fr],
+	       (assert (not (is_reg z));
+	        M.add z fr regenv)))
+      (0, [], regenv)
       zs in
   let a =
     match t with
