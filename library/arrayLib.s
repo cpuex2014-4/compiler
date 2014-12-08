@@ -20,7 +20,7 @@ min_caml_read_byte:
 rd_poll:
         lw  $t1, 0($t0)
         andi  $t1, $t1, 0x01
-        beq $t1, $zero, wr_poll
+        beq $t1, $zero, rd_poll
         lw  $v0, 4($t0)
         andi  $v0, $v0, 0xff
         jr  $ra
