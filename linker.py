@@ -17,10 +17,14 @@ def concat(lib, f, out):
 
 if __name__ == '__main__':
     file_name = sys.argv[1]
-    lib_name = sys.argv[2]
-    out_name = sys.argv[3]
-    with open(file_name,'r') as f:
+    out_name = sys.argv[2]
+    lib_name = '../kake/library/arrayLib.s'
+    flib_name = '../kake/library/floatLib.s'
+    with open(out_name,'w') as out:
+        add_init(out)
         with open(lib_name,'r') as lib:
-            with open(out_name,'w') as out:
-                add_init(out)
-                concat(lib, f, out)
+            out.write(lib.read())
+        with open(flib_name, 'r') as flib:
+            out.write(flib.read())
+        with open(file_name,'r') as f:
+            out.write(f.read())
