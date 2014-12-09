@@ -217,16 +217,20 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   (* 関数呼び出しの仮想命令の実装 (caml2html: emit_call) *)
   | Tail, CallCls(x, ys, zs) -> (* 末尾呼び出し (caml2html: emit_tailcall) *)
       g'_args oc [(x, reg_cl)] ys zs; (* 引数のセット *)
-      Printf.fprintf oc "\tjr\t%s\n" reg_cl;
+      Printf.fprintf oc "\tlw\t$at, 0(%s)\n" reg_cl;
+      Printf.fprintf oc "\tjr\t$at\n";
   | Tail, CallDir(Id.L(x), ys, zs) -> (* 末尾呼び出し *)
       g'_args oc [] ys zs;
       Printf.fprintf oc "\tj\t%s\n" x;
   | NonTail(a), CallCls(x, ys, zs) ->
       g'_args oc [(x, reg_cl)] ys zs;
       let ss = stacksize () in
-      if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (-1*ss);
-      Printf.fprintf oc "\tjalr\t%s\n" reg_cl;
-      if ss > 0 then Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp ss;
+      Printf.fprintf oc "\tsw\t$ra, %d($sp)\n" (-ss);
+      Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (-4-ss);
+      Printf.fprintf oc "\tlw\t$at, 0(%s)\n" reg_cl;
+      Printf.fprintf oc "\tjalr\t$at\n";
+      Printf.fprintf oc "\taddiu\t%s, %s, %d\n" reg_sp reg_sp (4+ss);
+      Printf.fprintf oc "\tlw\t$ra, %d($sp)\n" (-ss);
       if List.mem a allregs && a <> regs.(0) then
         Printf.fprintf oc "\taddu\t%s, %s, $zero\n" a regs.(0)
       else if List.mem a allfregs && a <> fregs.(0) then
