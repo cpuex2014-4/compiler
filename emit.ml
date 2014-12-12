@@ -67,7 +67,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   | NonTail(x), Sub(y, V(z)) -> Printf.fprintf oc "\tsubu\t%s, %s, %s\n" x y z
   | NonTail(x), Sub(y, C(z)) -> Printf.fprintf oc "\taddiu\t%s, %s, %d\n" x y ((-1) * z)
   | NonTail(x), Mul(y, _) -> Printf.fprintf oc "\tsll\t%s, %s, 2\n" x y
-  | NonTail(x), Div(y, _) -> Printf.fprintf oc "\tsrl\t%s, %s, 1\n" x y
+  | NonTail(x), Div(y, _) -> Printf.fprintf oc "\tsra\t%s, %s, 1\n" x y
   | NonTail(x), Ld(y, V(z), i) ->
     if i = 1 then
      (Printf.fprintf oc "\taddu\t$at, %s, %s\n" y z;
@@ -93,7 +93,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
        raise Shift_amount_is_not_4_error)
   | NonTail(_), St(x, y, C(j), i) -> Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x (j * i) y
   | NonTail(x), FMovD(y) -> Printf.fprintf oc "\tmov.s\t%s, %s\n" x y
-  | NonTail(x), FNegD(y) -> raise Not_supported_yet (* $f0 = 0にすれば簡単 *)
+  | NonTail(x), FNegD(y) -> Printf.fprintf oc "\tsub.s\t%s, $f31, %s\n" x y
   | NonTail(x), FAddD(y, z) -> Printf.fprintf oc "\tadd.s\t%s, %s, %s\n" x y z
   | NonTail(x), FSubD(y, z) -> Printf.fprintf oc "\tsub.s\t%s, %s, %s\n" x y z
   | NonTail(x), FMulD(y, z) -> Printf.fprintf oc "\tmul.s\t%s, %s, %s\n" x y z
@@ -345,6 +345,7 @@ let f oc (Prog(data, fundefs, e)) =
   stackset := S.empty;
   stackmap := [];
   Printf.fprintf oc "main:\n";
+  Printf.fprintf oc "\tmtc1\t$zero, $f31\n";
   g oc (NonTail(regs.(0)), e);
   Printf.fprintf oc "endLoop:\n";
   Printf.fprintf oc "\tjal\tmin_caml_read_byte\n";

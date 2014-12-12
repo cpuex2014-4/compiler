@@ -51,8 +51,8 @@ let rec print_closure outchan exp indent =
     | Neg id -> out ("Neg "^id)
     | Add (id0, id1) -> out ("Add "^id0^" "^id1)
     | Sub (id0, id1) -> out ("Sub "^id0^" "^id1)
-    | Mul (id0, id1) -> out ("Sub "^id0^" "^id1)
-    | Div (id0, id1) -> out ("Sub "^id0^" "^id1)
+    | Mul (id0, id1) -> out ("Mul "^id0^" "^id1)
+    | Div (id0, id1) -> out ("Div "^id0^" "^id1)
     | FNeg id -> out ("FNeg "^id)
     | FAdd (id0, id1) -> out ("FAdd "^id0^" "^id1)
     | FSub (id0, id1) -> out ("FSub "^id0^" "^id1)
@@ -143,7 +143,7 @@ let print_prog outchan fundef indent =
 let rec fv = function
   | Unit | Int(_) | Float(_) | ExtTuple(_) | ExtArray(_) -> S.empty
   | Neg(x) | FNeg(x) -> S.singleton x
-  | Add(x, y) | Sub(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
+  | Add(x, y) | Sub(x, y) | Mul(x, y) | Div(x, y) | FAdd(x, y) | FSub(x, y) | FMul(x, y) | FDiv(x, y) | Get(x, y) -> S.of_list [x; y]
   | IfEq(x, y, e1, e2)| IfLE(x, y, e1, e2) -> S.add x (S.add y (S.union (fv e1) (fv e2)))
   | Let((x, t), e1, e2) -> S.union (fv e1) (S.remove x (fv e2))
   | Var(x) -> S.singleton x
