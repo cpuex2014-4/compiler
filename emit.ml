@@ -66,7 +66,16 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprim
   | NonTail(x), Add(y, C(z)) -> Printf.fprintf oc "\taddiu\t%s, %s, %d\n" x y z
   | NonTail(x), Sub(y, V(z)) -> Printf.fprintf oc "\tsubu\t%s, %s, %s\n" x y z
   | NonTail(x), Sub(y, C(z)) -> Printf.fprintf oc "\taddiu\t%s, %s, %d\n" x y ((-1) * z)
-  | NonTail(x), Mul(y, _) -> Printf.fprintf oc "\tsll\t%s, %s, 2\n" x y
+  | NonTail(x), Mul(y, C(2)) ->
+      Printf.fprintf oc "\tsll\t%s, %s, 1\n" x y
+  | NonTail(x), Mul(y, C(4)) ->
+      Printf.fprintf oc "\tsll\t%s, %s, 2\n" x y
+  | NonTail(x), Mul(y, C(8)) ->
+      Printf.fprintf oc "\tsll\t%s, %s, 3\n" x y
+  | NonTail(x), Mul(y, C(_)) ->
+    raise Not_supported_yet
+  | NonTail(x), Mul(y, V(z)) ->
+    raise Not_supported_yet
   | NonTail(x), Div(y, _) -> Printf.fprintf oc "\tsra\t%s, %s, 1\n" x y
   | NonTail(x), Ld(y, V(z), i) ->
     if i = 1 then
